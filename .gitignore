@@ -1,0 +1,62 @@
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Pip
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# ML/Data artifacts
+*.pt
+*.pth
+siamese_model.pt
+data/processed/
+data/raw/
+*.npz
+*.pkl
+*.pickle
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+
+# Test/Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+*.csv
+!data/raw/**/*.csv
+.vscode/settings.json

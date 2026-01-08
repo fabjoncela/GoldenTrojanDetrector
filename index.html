@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trojan Detector</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 600px;
+        width: 100%;
+        padding: 40px;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        text-align: center;
+        font-size: 28px;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      input[type="file"] {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: border-color 0.3s;
+      }
+
+      input[type="file"]:hover {
+        border-color: #667eea;
+      }
+
+      input[type="file"]:focus {
+        outline: none;
+        border-color: #667eea;
+        background-color: #f8f9ff;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-submit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-submit:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-clear {
+        background: #f0f0f0;
+        color: #333;
+      }
+
+      .btn-clear:hover {
+        background: #e0e0e0;
+      }
+
+      .results {
+        margin-top: 30px;
+        padding: 20px;
+        background: #f8f9ff;
+        border-radius: 8px;
+        display: none;
+      }
+
+      .results.show {
+        display: block;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .result-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .verdict-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-right: 10px;
+      }
+
+      .verdict-anomaly {
+        background: #ffebee;
+        color: #c62828;
+      }
+
+      .verdict-normal {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      .verdict-text {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .result-item {
+        margin: 12px 0;
+        padding: 10px 0;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .result-item:last-child {
+        border-bottom: none;
+      }
+
+      .result-label {
+        color: #666;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .result-value {
+        color: #333;
+        font-size: 16px;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+
+      .threshold-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+
+      .threshold-exceeded {
+        background: #c62828;
+      }
+
+      .threshold-normal {
+        background: #2e7d32;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .loading.show {
+        display: block;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        background: #ffebee;
+        color: #c62828;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        display: none;
+      }
+
+      .error.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🛡️ Trojan Detector</h1>
+      <p class="subtitle">Upload CSV files to detect anomalies</p>
+
+      <form id="scoreForm">
+        <div class="form-group">
+          <label for="normalFile">Normal Reference Data (CSV)</label>
+          <input type="file" id="normalFile" accept=".csv" required />
+        </div>
+
+        <div class="form-group">
+          <label for="sampleFile">Sample to Analyze (CSV)</label>
+          <input type="file" id="sampleFile" accept=".csv" required />
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="btn-submit" id="submitBtn">
+            Analyze
+          </button>
+          <button type="reset" class="btn-clear">Clear</button>
+        </div>
+      </form>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyzing...</p>
+      </div>
+
+      <div class="error" id="error"></div>
+
+      <div class="results" id="results">
+        <div class="result-header">
+          <div class="verdict-badge" id="verdictBadge"></div>
+          <div class="verdict-text" id="verdictText"></div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-label">Average Anomaly Score</div>
+          <div class="result-value" id="avgScore"></div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-label">Maximum Anomaly Score</div>
+          <div class="result-value" id="maxScore"></div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-label">Threshold</div>
+          <div class="result-value">
+            <span class="threshold-indicator" id="thresholdIndicator"></span>
+            <span id="thresholdValue"></span>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-label">Sample Windows Analyzed</div>
+          <div class="result-value" id="numWindows"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("scoreForm");
+      const submitBtn = document.getElementById("submitBtn");
+      const loading = document.getElementById("loading");
+      const error = document.getElementById("error");
+      const results = document.getElementById("results");
+      const API_URL = "http://127.0.0.1:8000/score";
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const normalFile = document.getElementById("normalFile").files[0];
+        const sampleFile = document.getElementById("sampleFile").files[0];
+
+        if (!normalFile || !sampleFile) {
+          showError("Please select both files");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("normal", normalFile);
+        formData.append("sample", sampleFile);
+
+        submitBtn.disabled = true;
+        loading.classList.add("show");
+        error.classList.remove("show");
+        results.classList.remove("show");
+
+        try {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          displayResults(data);
+        } catch (err) {
+          showError(`Error: ${err.message}`);
+        } finally {
+          loading.classList.remove("show");
+          submitBtn.disabled = false;
+        }
+      });
+
+      function displayResults(data) {
+        const isAnomaly = data.is_anomaly;
+        const avgScore = data.avg_score.toFixed(4);
+        const maxScore = data.max_score.toFixed(4);
+
+        document.getElementById("verdictBadge").className = `verdict-badge ${
+          isAnomaly ? "verdict-anomaly" : "verdict-normal"
+        }`;
+        document.getElementById("verdictBadge").textContent = isAnomaly
+          ? "⚠️ ANOMALY DETECTED"
+          : "✓ NORMAL";
+        document.getElementById("verdictText").textContent = isAnomaly
+          ? "Trojan Detected"
+          : "No Anomaly Detected";
+
+        document.getElementById("avgScore").textContent = `${avgScore} (${
+          isAnomaly ? "above" : "below"
+        } threshold)`;
+        document.getElementById("maxScore").textContent = maxScore;
+        document.getElementById("thresholdValue").textContent =
+          data.threshold.toFixed(4);
+
+        const indicator = document.getElementById("thresholdIndicator");
+        indicator.className = `threshold-indicator ${
+          isAnomaly ? "threshold-exceeded" : "threshold-normal"
+        }`;
+
+        document.getElementById(
+          "numWindows"
+        ).textContent = `${data.num_sample_windows} (${data.num_normal_windows} reference)`;
+
+        results.classList.add("show");
+      }
+
+      function showError(message) {
+        error.textContent = message;
+        error.classList.add("show");
+      }
+    </script>
+  </body>
+</html>
