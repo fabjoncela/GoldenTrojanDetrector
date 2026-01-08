@@ -253,6 +253,34 @@
       .error.show {
         display: block;
       }
+
+      .section-title {
+        margin: 30px 0 12px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #333;
+      }
+
+      .panel {
+        margin-top: 12px;
+        padding: 16px;
+        background: #f8f9ff;
+        border-radius: 8px;
+        border: 1px solid #e4e7ff;
+      }
+
+      .train-status {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #333;
+      }
+
+      .train-loss {
+        margin-top: 6px;
+        font-size: 13px;
+        color: #555;
+        line-height: 1.4;
+      }
     </style>
   </head>
   <body>
@@ -315,6 +343,27 @@
           <div class="result-value" id="numWindows"></div>
         </div>
       </div>
+
+      <h2 class="section-title">Train Model</h2>
+      <div class="panel">
+        <p style="color: #555; font-size: 14px; margin-bottom: 12px">
+          Runs preprocessing, pair generation, and training using default data
+          paths.
+        </p>
+        <div class="button-group" style="margin-top: 0">
+          <button type="button" class="btn-submit" id="trainBtn">
+            Run Training
+          </button>
+          <button type="button" class="btn-clear" id="clearTrain">Clear</button>
+        </div>
+        <div class="loading" id="trainLoading" style="padding: 12px 0">
+          <div class="spinner"></div>
+          <p>Training...</p>
+        </div>
+        <div class="error" id="trainError" style="margin-top: 10px"></div>
+        <div class="train-status" id="trainStatus"></div>
+        <div class="train-loss" id="trainLoss"></div>
+      </div>
     </div>
 
     <script>
@@ -324,6 +373,14 @@
       const error = document.getElementById("error");
       const results = document.getElementById("results");
       const API_URL = "http://127.0.0.1:8000/score";
+      const TRAIN_URL = "http://127.0.0.1:8000/train";
+
+      const trainBtn = document.getElementById("trainBtn");
+      const clearTrain = document.getElementById("clearTrain");
+      const trainLoading = document.getElementById("trainLoading");
+      const trainError = document.getElementById("trainError");
+      const trainStatus = document.getElementById("trainStatus");
+      const trainLoss = document.getElementById("trainLoss");
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -404,6 +461,53 @@
         error.textContent = message;
         error.classList.add("show");
       }
+
+      trainBtn.addEventListener("click", async () => {
+        trainBtn.disabled = true;
+        trainLoading.classList.add("show");
+        trainError.classList.remove("show");
+        trainStatus.textContent = "";
+        trainLoss.textContent = "";
+
+        try {
+          const formData = new FormData();
+          // Using defaults on the server; no overrides necessary
+          const response = await fetch(TRAIN_URL, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          const lastLoss = data.losses?.length
+            ? data.losses[data.losses.length - 1]
+            : null;
+          trainStatus.textContent = `Training complete: ${data.epochs} epochs`;
+          if (lastLoss !== null) {
+            trainLoss.textContent = `Final loss: ${lastLoss.toFixed(
+              4
+            )} | Loss history: ${data.losses
+              .map((v) => v.toFixed(4))
+              .join(", ")}`;
+          }
+        } catch (err) {
+          trainError.textContent = `Error: ${err.message}`;
+          trainError.classList.add("show");
+        } finally {
+          trainLoading.classList.remove("show");
+          trainBtn.disabled = false;
+        }
+      });
+
+      clearTrain.addEventListener("click", () => {
+        trainError.classList.remove("show");
+        trainStatus.textContent = "";
+        trainLoss.textContent = "";
+      });
     </script>
   </body>
 </html>

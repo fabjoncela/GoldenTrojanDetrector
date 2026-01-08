@@ -7,7 +7,7 @@ from .config import *
 
 
 
-def train(p1, p2, labels):
+def train(p1, p2, labels, progress_callback=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -25,6 +25,8 @@ def train(p1, p2, labels):
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 
+    history = []
+
     for epoch in range(EPOCHS):
         total_loss = 0
         for x1, x2, y in loader:
@@ -35,7 +37,12 @@ def train(p1, p2, labels):
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print(f"Epoch {epoch+1}: Loss = {total_loss/len(loader):.4f}")
 
+        avg_loss = total_loss / len(loader)
+        history.append(avg_loss)
+        if progress_callback is not None:
+            progress_callback(epoch + 1, avg_loss)
+        print(f"Epoch {epoch+1}: Loss = {avg_loss:.4f}")
 
     torch.save(model.state_dict(), "siamese_model.pt")
+    return history

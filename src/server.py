@@ -6,9 +6,12 @@ from typing import Optional
 import numpy as np
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from .config import THRESHOLD, WINDOW_SIZE
 from .evaluate import _load_model, _load_scaler, _prepare_windows, anomaly_scores
+from .pipeline import run_pipeline
 
 app = FastAPI(title="Trojan Detector API", version="0.1.0")
 
@@ -94,6 +97,34 @@ async def score(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/")
+def read_root():
+    index_path = Path(__file__).parent.parent / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {"message": "Open index.html to use the detector"}
+
+
+@app.post("/train")
+def train_pipeline(
+    normal_path: str = Form("data/raw/normal"),
+    trojan_path: str = Form("data/raw/trojan/triggered"),
+    processed_path: str = Form("data/processed/data.npz"),
+    scaler_path: str = Form("data/processed/scaler.npz"),
+    window_size: int = Form(WINDOW_SIZE),
+):
+    # Run full pipeline (preprocess + pair gen + train) and return epoch losses
+    result = run_pipeline(normal_path, trojan_path, processed_path, scaler_path, window_size)
+
+    # Invalidate cached artifacts so /score reloads the fresh model/scaler
+    ARTIFACTS.model = None
+    ARTIFACTS.scaler = None
+    ARTIFACTS.model_path = None
+    ARTIFACTS.scaler_path = None
+
+    return result
 
 
 # For local testing: uvicorn src.server:app --reload --port 8000
