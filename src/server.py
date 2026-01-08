@@ -44,12 +44,15 @@ def _ensure_artifacts(model_path: str, scaler_path: str, device: torch.device):
 
 @app.post("/score")
 async def score(
-    normal: UploadFile = File(..., description="CSV of normal reference data"),
-    sample: UploadFile = File(..., description="CSV of sample to score"),
+    normal: Optional[UploadFile] = File(None, description="CSV of normal reference data"),
+    sample: Optional[UploadFile] = File(None, description="CSV of sample to score"),
     threshold: float = Form(THRESHOLD),
     model_path: str = Form("siamese_model.pt"),
     scaler_path: str = Form("data/processed/scaler.npz"),
     window_size: int = Form(WINDOW_SIZE),
+    normal_path: str = Form("data/raw/normal/run_001.csv"),
+    sample_path: str = Form("data/raw/trojan/triggered/run_001.csv"),
+    use_default: bool = Form(False),
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -57,25 +60,33 @@ async def score(
     scaler = ARTIFACTS.scaler
     model = ARTIFACTS.model
 
-    # Persist uploads to temporary files to reuse preprocessing
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as f_norm:
-        content = await normal.read()
-        f_norm.write(content)
-        normal_path = f_norm.name
+    # Determine input sources: uploaded files or default paths
+    if not use_default and (normal is None or sample is None):
+        raise HTTPException(status_code=400, detail="Please upload normal and sample CSVs or set use_default=true")
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as f_samp:
-        content = await sample.read()
-        f_samp.write(content)
-        sample_path = f_samp.name
-
+    temp_paths = []
     try:
+        if normal is not None and not use_default:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as f_norm:
+                content = await normal.read()
+                f_norm.write(content)
+                normal_path = f_norm.name
+                temp_paths.append(normal_path)
+
+        if sample is not None and not use_default:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as f_samp:
+                content = await sample.read()
+                f_samp.write(content)
+                sample_path = f_samp.name
+                temp_paths.append(sample_path)
+
         normal_windows = _prepare_windows(normal_path, scaler, window_size)
         sample_windows = _prepare_windows(sample_path, scaler, window_size)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
-        Path(normal_path).unlink(missing_ok=True)
-        Path(sample_path).unlink(missing_ok=True)
+        for p in temp_paths:
+            Path(p).unlink(missing_ok=True)
 
     normal_t = torch.tensor(normal_windows, dtype=torch.float32, device=device)
     sample_t = torch.tensor(sample_windows, dtype=torch.float32, device=device)

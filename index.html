@@ -304,6 +304,17 @@
           <button type="submit" class="btn-submit" id="submitBtn">
             Analyze
           </button>
+          <button
+            type="button"
+            class="btn-submit"
+            id="useDefault"
+            style="
+              flex: 0 0 48%;
+              background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            "
+          >
+            Use Project Data
+          </button>
           <button type="reset" class="btn-clear">Clear</button>
         </div>
       </form>
@@ -390,6 +401,7 @@
       const trainBtn = document.getElementById("trainBtn");
       const demoTrain = document.getElementById("demoTrain");
       const clearTrain = document.getElementById("clearTrain");
+      const useDefaultBtn = document.getElementById("useDefault");
       const trainLoading = document.getElementById("trainLoading");
       const trainError = document.getElementById("trainError");
       const trainStatus = document.getElementById("trainStatus");
@@ -409,8 +421,18 @@
         const formData = new FormData();
         formData.append("normal", normalFile);
         formData.append("sample", sampleFile);
+        await submitScore(formData);
+      });
 
+      useDefaultBtn.addEventListener("click", async () => {
+        const formData = new FormData();
+        formData.append("use_default", "true");
+        await submitScore(formData);
+      });
+
+      async function submitScore(formData) {
         submitBtn.disabled = true;
+        useDefaultBtn.disabled = true;
         loading.classList.add("show");
         error.classList.remove("show");
         results.classList.remove("show");
@@ -433,8 +455,9 @@
         } finally {
           loading.classList.remove("show");
           submitBtn.disabled = false;
+          useDefaultBtn.disabled = false;
         }
-      });
+      }
 
       function displayResults(data) {
         const isAnomaly = data.is_anomaly;
