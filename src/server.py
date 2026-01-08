@@ -8,6 +8,7 @@ import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from typing import Optional
 
 from .config import THRESHOLD, WINDOW_SIZE
 from .evaluate import _load_model, _load_scaler, _prepare_windows, anomaly_scores
@@ -114,9 +115,17 @@ def train_pipeline(
     processed_path: str = Form("data/processed/data.npz"),
     scaler_path: str = Form("data/processed/scaler.npz"),
     window_size: int = Form(WINDOW_SIZE),
+    epochs: Optional[int] = Form(None),
 ):
     # Run full pipeline (preprocess + pair gen + train) and return epoch losses
-    result = run_pipeline(normal_path, trojan_path, processed_path, scaler_path, window_size)
+    result = run_pipeline(
+        normal_path=normal_path,
+        trojan_path=trojan_path,
+        processed_path=processed_path,
+        scaler_out_path=scaler_path,
+        window_size=window_size,
+        epochs=epochs,
+    )
 
     # Invalidate cached artifacts so /score reloads the fresh model/scaler
     ARTIFACTS.model = None

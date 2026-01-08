@@ -80,6 +80,7 @@
       .button-group {
         display: flex;
         gap: 10px;
+        flex-wrap: wrap;
         margin-top: 30px;
       }
 
@@ -354,6 +355,17 @@
           <button type="button" class="btn-submit" id="trainBtn">
             Run Training
           </button>
+          <button
+            type="button"
+            class="btn-submit"
+            id="demoTrain"
+            style="
+              flex: 0 0 40%;
+              background: linear-gradient(135deg, #ff9800 0%, #ff7043 100%);
+            "
+          >
+            Demo (5 epochs)
+          </button>
           <button type="button" class="btn-clear" id="clearTrain">Clear</button>
         </div>
         <div class="loading" id="trainLoading" style="padding: 12px 0">
@@ -376,6 +388,7 @@
       const TRAIN_URL = "http://127.0.0.1:8000/train";
 
       const trainBtn = document.getElementById("trainBtn");
+      const demoTrain = document.getElementById("demoTrain");
       const clearTrain = document.getElementById("clearTrain");
       const trainLoading = document.getElementById("trainLoading");
       const trainError = document.getElementById("trainError");
@@ -462,8 +475,9 @@
         error.classList.add("show");
       }
 
-      trainBtn.addEventListener("click", async () => {
+      async function runTraining(epochsOverride) {
         trainBtn.disabled = true;
+        demoTrain.disabled = true;
         trainLoading.classList.add("show");
         trainError.classList.remove("show");
         trainStatus.textContent = "";
@@ -471,7 +485,10 @@
 
         try {
           const formData = new FormData();
-          // Using defaults on the server; no overrides necessary
+          if (epochsOverride) {
+            formData.append("epochs", epochsOverride);
+          }
+
           const response = await fetch(TRAIN_URL, {
             method: "POST",
             body: formData,
@@ -486,7 +503,8 @@
           const lastLoss = data.losses?.length
             ? data.losses[data.losses.length - 1]
             : null;
-          trainStatus.textContent = `Training complete: ${data.epochs} epochs`;
+          const epochsUsed = data.epochs_used ?? data.epochs;
+          trainStatus.textContent = `Training complete: ${epochsUsed} epochs`;
           if (lastLoss !== null) {
             trainLoss.textContent = `Final loss: ${lastLoss.toFixed(
               4
@@ -500,8 +518,12 @@
         } finally {
           trainLoading.classList.remove("show");
           trainBtn.disabled = false;
+          demoTrain.disabled = false;
         }
-      });
+      }
+
+      trainBtn.addEventListener("click", () => runTraining(null));
+      demoTrain.addEventListener("click", () => runTraining(5));
 
       clearTrain.addEventListener("click", () => {
         trainError.classList.remove("show");

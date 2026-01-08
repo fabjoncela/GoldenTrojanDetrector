@@ -1,4 +1,5 @@
 import torch
+from typing import Optional
 from torch.utils.data import DataLoader, TensorDataset
 from .model import SiameseNet
 from .loss import contrastive_loss
@@ -7,7 +8,7 @@ from .config import *
 
 
 
-def train(p1, p2, labels, progress_callback=None):
+def train(p1, p2, labels, progress_callback=None, epochs: Optional[int] = None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -27,7 +28,9 @@ def train(p1, p2, labels, progress_callback=None):
 
     history = []
 
-    for epoch in range(EPOCHS):
+    num_epochs = epochs if epochs is not None else EPOCHS
+
+    for epoch in range(num_epochs):
         total_loss = 0
         for x1, x2, y in loader:
             x1, x2, y = x1.to(device), x2.to(device), y.to(device)
