@@ -20,7 +20,8 @@ def plot_training_history(losses, save_path="plots/training_loss.png"):
     Path(save_path).parent.mkdir(exist_ok=True)
     
     plt.figure(figsize=(10, 6))
-    plt.plot(range(1, len(losses) + 1), losses, linewidth=2, color='#667eea')
+    plt.plot(range(1, len(losses) + 1), losses, linewidth=2.5, color='#667eea', marker='o', markersize=4)
+    plt.fill_between(range(1, len(losses) + 1), losses, alpha=0.2, color='#667eea')
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('Loss', fontsize=12)
     plt.title('Training Loss Over Time', fontsize=14, fontweight='bold')
@@ -56,8 +57,8 @@ def plot_raw_data_comparison(normal_data, trojan_data, save_path="plots/data_com
     
     fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
     features = ['Feature 1', 'Feature 2', 'Feature 3']
-    colors_normal = ['#4caf50', '#66bb6a', '#81c784']
-    colors_trojan = ['#f44336', '#e57373', '#ef5350']
+    colors_normal = ['#4caf50', '#42a5f5', '#ab47bc']  # Green, Blue, Purple for variety
+    colors_trojan = ['#f44336', '#ff9800', '#e91e63']  # Red, Orange, Pink for variety
     
     for i, (ax, feat) in enumerate(zip(axes, features)):
         ax.plot(normal_data[:200, i], label='Normal', color=colors_normal[i], linewidth=1.5, alpha=0.8)
@@ -82,10 +83,10 @@ def plot_confusion_matrix(true_labels, predictions, save_path="plots/confusion_m
     cm = confusion_matrix(true_labels, predictions)
     
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=True,
+    sns.heatmap(cm, annot=True, fmt='d', cmap='RdYlGn', cbar=True,
                 xticklabels=['Normal', 'Trojan'],
                 yticklabels=['Normal', 'Trojan'],
-                linewidths=1, linecolor='gray')
+                linewidths=2, linecolor='gray', annot_kws={'fontsize': 14, 'weight': 'bold'})
     plt.xlabel('Predicted', fontsize=12)
     plt.ylabel('Actual', fontsize=12)
     plt.title('Confusion Matrix', fontsize=14, fontweight='bold')
@@ -104,8 +105,8 @@ def plot_roc_curve(true_labels, scores, save_path="plots/roc_curve.png"):
     roc_auc = auc(fpr, tpr)
     
     plt.figure(figsize=(8, 8))
-    plt.plot(fpr, tpr, color='#667eea', linewidth=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
-    plt.plot([0, 1], [0, 1], 'k--', linewidth=1.5, label='Random')
+    plt.plot(fpr, tpr, color='#667eea', linewidth=3, label=f'ROC curve (AUC = {roc_auc:.3f})')
+    plt.plot([0, 1], [0, 1], color='#ff6b6b', linestyle='--', linewidth=2, label='Random')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate', fontsize=12)
