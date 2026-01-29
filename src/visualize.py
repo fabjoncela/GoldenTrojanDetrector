@@ -36,8 +36,8 @@ def plot_score_distribution(normal_scores, trojan_scores, threshold=THRESHOLD, s
     Path(save_path).parent.mkdir(exist_ok=True)
     
     plt.figure(figsize=(10, 6))
-    plt.hist(normal_scores, bins=30, alpha=0.6, color='#4caf50', label='Normal', edgecolor='black')
-    plt.hist(trojan_scores, bins=30, alpha=0.6, color='#f44336', label='Trojan', edgecolor='black')
+    plt.hist(normal_scores, bins=30, alpha=0.7, color='#4caf50', label='Normal', linewidth=0.5, edgecolor='#2e7d32')
+    plt.hist(trojan_scores, bins=30, alpha=0.7, color='#f44336', label='Trojan', linewidth=0.5, edgecolor='#c62828')
     plt.axvline(threshold, color='#ff9800', linestyle='--', linewidth=2, label=f'Threshold ({threshold})')
     plt.xlabel('Anomaly Score', fontsize=12)
     plt.ylabel('Frequency', fontsize=12)
