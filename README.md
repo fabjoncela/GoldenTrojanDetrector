@@ -76,19 +76,40 @@ http://127.0.0.1:8000/
 
 ### Web Interface
 
-1. **Generate Sample Data**: Download pre-formatted test CSV files (normal and trojan)
-2. **Score Analysis**: Upload normal reference data and sample data to detect anomalies
-3. **Use Project Data**: Quick test with pre-loaded sample data
-4. **Train Model**: Run full training (50 epochs) or demo mode (5 epochs)
-5. **Generate Plots**: Visualize training performance and detection results
+You can use the app in **two ways**:
+
+#### ✅ Option A — Use Project Data (Local CSVs)
+
+This uses the built‑in dataset stored in `data/raw/`.
+
+1. Click **Use Project Data**
+2. Click **Analyze**
+3. Click **Generate Plots (Project Data)** to visualize results from the local dataset
+
+#### ✅ Option B — Use Uploaded Data (Your CSVs)
+
+This uses your uploaded CSV files.
+
+1. Click **📥 Normal Reference** (optional) and one of **Clean/Suspicious/Trojan** samples, or upload your own files
+2. Upload **Normal Reference** + **Sample to Analyze**
+3. Click **Analyze**
+4. Click **Generate Plots (Uploaded Data)** to visualize the last uploaded files
+
+---
+
+**Other actions:**
+
+- **Train Model**: Run full training (50 epochs) or demo mode (5 epochs)
+- **Generate Plots**: Visualize training performance and detection results
 
 ### Quick Start: Generate Test Data
 
 **Don't have CSV files? No problem!**
 
-1. Click **"📥 Download Normal CSV"** to get a sample normal reference file
-2. Click **"📥 Download Trojan CSV"** to get a sample trojan/anomaly file
-3. Upload both files in the "Analyze" section to see the detector in action
+1. Click **"📥 Normal Reference"** to get a sample normal reference file
+2. Click **"🦠 Trojan Sample"** (or **Clean/Suspicious**) to get a sample to analyze
+3. Upload both files and click **Analyze**
+4. Use **Generate Plots (Uploaded Data)** to visualize the uploaded files
 
 This is perfect for demonstrations without needing to understand CSV formats!
 

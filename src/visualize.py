@@ -194,6 +194,70 @@ def generate_all_plots(
     }
 
 
+def generate_plots_from_csvs(
+    normal_csv: str,
+    sample_csv: str,
+    model_path="siamese_model.pt",
+    scaler_path="data/processed/scaler.npz",
+    window_size=WINDOW_SIZE,
+    output_dir="plots",
+    prefix="uploaded_",
+):
+    """Generate plots using uploaded CSVs (separate filenames)."""
+    print("\n🎨 Generating visualizations for uploaded data...")
+
+    Path(output_dir).mkdir(exist_ok=True)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = _load_model(model_path, device)
+    scaler = _load_scaler(scaler_path)
+
+    normal_windows = _prepare_windows(normal_csv, scaler, window_size)
+    sample_windows = _prepare_windows(sample_csv, scaler, window_size)
+
+    normal_raw = np.loadtxt(normal_csv, delimiter=",", skiprows=1)
+    sample_raw = np.loadtxt(sample_csv, delimiter=",", skiprows=1)
+
+    plot_raw_data_comparison(
+        normal_raw,
+        sample_raw,
+        f"{output_dir}/{prefix}data_comparison.png",
+    )
+
+    normal_t = torch.tensor(normal_windows, dtype=torch.float32, device=device)
+    sample_t = torch.tensor(sample_windows, dtype=torch.float32, device=device)
+
+    normal_scores = anomaly_scores(model, normal_t[:5], normal_t).cpu().numpy()
+    sample_scores = anomaly_scores(model, normal_t[:5], sample_t).cpu().numpy()
+
+    threshold = float(np.percentile(normal_scores, 95))
+    plot_score_distribution(
+        normal_scores,
+        sample_scores,
+        threshold=threshold,
+        save_path=f"{output_dir}/{prefix}score_distribution.png",
+    )
+
+    all_scores = np.concatenate([normal_scores, sample_scores])
+    true_labels = np.concatenate([np.zeros(len(normal_scores)), np.ones(len(sample_scores))])
+    predictions = (all_scores > threshold).astype(int)
+    plot_confusion_matrix(true_labels, predictions, f"{output_dir}/{prefix}confusion_matrix.png")
+
+    plot_roc_curve(true_labels, all_scores, f"{output_dir}/{prefix}roc_curve.png")
+
+    print("\n✅ Uploaded plots generated in 'plots/' directory!")
+
+    return {
+        "plots": [
+            f"{prefix}data_comparison.png",
+            f"{prefix}score_distribution.png",
+            f"{prefix}confusion_matrix.png",
+            f"{prefix}roc_curve.png",
+        ],
+        "output_dir": output_dir,
+    }
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate visualization plots")

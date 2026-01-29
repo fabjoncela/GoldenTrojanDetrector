@@ -15,7 +15,7 @@ from typing import Optional
 from .config import THRESHOLD, WINDOW_SIZE
 from .evaluate import _load_model, _load_scaler, _prepare_windows, anomaly_scores
 from .pipeline import run_pipeline
-from .visualize import generate_all_plots
+from .visualize import generate_all_plots, generate_plots_from_csvs
 
 app = FastAPI(title="Trojan Detector API", version="0.1.0")
 
@@ -29,6 +29,7 @@ class _Artifacts:
 
 
 ARTIFACTS = _Artifacts()
+LAST_UPLOAD = {"normal": None, "sample": None}
 
 
 def _ensure_artifacts(model_path: str, scaler_path: str, device: torch.device):
@@ -50,6 +51,7 @@ async def score(
     normal: Optional[UploadFile] = File(None, description="CSV of normal reference data"),
     sample: Optional[UploadFile] = File(None, description="CSV of sample to score"),
     threshold: float = Form(THRESHOLD),
+    auto_threshold: bool = Form(True),
     model_path: str = Form("siamese_model.pt"),
     scaler_path: str = Form("data/processed/scaler.npz"),
     window_size: int = Form(WINDOW_SIZE),
@@ -76,12 +78,22 @@ async def score(
                 normal_path = f_norm.name
                 temp_paths.append(normal_path)
 
+            Path("data/processed").mkdir(parents=True, exist_ok=True)
+            uploaded_normal = Path("data/processed/last_upload_normal.csv")
+            uploaded_normal.write_bytes(content)
+            LAST_UPLOAD["normal"] = str(uploaded_normal)
+
         if sample is not None and not use_default:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as f_samp:
                 content = await sample.read()
                 f_samp.write(content)
                 sample_path = f_samp.name
                 temp_paths.append(sample_path)
+
+            Path("data/processed").mkdir(parents=True, exist_ok=True)
+            uploaded_sample = Path("data/processed/last_upload_sample.csv")
+            uploaded_sample.write_bytes(content)
+            LAST_UPLOAD["sample"] = str(uploaded_sample)
 
         normal_windows = _prepare_windows(normal_path, scaler, window_size)
         sample_windows = _prepare_windows(sample_path, scaler, window_size)
@@ -93,6 +105,11 @@ async def score(
 
     normal_t = torch.tensor(normal_windows, dtype=torch.float32, device=device)
     sample_t = torch.tensor(sample_windows, dtype=torch.float32, device=device)
+
+    if auto_threshold:
+        baseline_scores = anomaly_scores(model, normal_t, normal_t)
+        baseline_np = baseline_scores.detach().cpu().numpy()
+        threshold = float(np.percentile(baseline_np, 95))
 
     scores = anomaly_scores(model, normal_t, sample_t)
     avg_score = scores.mean().item()
@@ -130,6 +147,31 @@ def create_visualizations():
         return {"status": "success", "message": "Plots generated successfully", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate plots: {str(e)}")
+
+
+@app.post("/visualize-uploaded")
+def create_visualizations_from_uploaded():
+    """Generate visualization plots for the most recently uploaded CSVs"""
+    normal_csv = LAST_UPLOAD.get("normal")
+    sample_csv = LAST_UPLOAD.get("sample")
+
+    if not normal_csv or not sample_csv:
+        raise HTTPException(
+            status_code=400,
+            detail="No uploaded CSVs found. Please upload files and analyze first.",
+        )
+
+    if not Path(normal_csv).exists() or not Path(sample_csv).exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded CSVs are missing. Please upload again.",
+        )
+
+    try:
+        result = generate_plots_from_csvs(normal_csv, sample_csv)
+        return {"status": "success", "message": "Uploaded plots generated successfully", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate uploaded plots: {str(e)}")
 
 
 @app.get("/plots/{plot_name}")
@@ -199,28 +241,32 @@ async def generate_sample_normal():
 
 @app.get("/generate-sample-trojan")
 async def generate_sample_trojan():
-    """Generate a sample trojan/anomaly CSV file for testing"""
+    """Generate a definite trojan/malicious CSV (should definitely be flagged)"""
     np.random.seed(123)
     num_rows = 500
     
-    # Generate trojan data with anomalies
+    # Generate trojan data with strong distribution shift + anomalies
     time = np.linspace(0, 10, num_rows)
     feature1 = np.sin(time) + np.random.normal(0, 0.1, num_rows)
     feature2 = np.cos(time * 1.5) + np.random.normal(0, 0.1, num_rows)
     feature3 = np.sin(time * 0.5) * 0.5 + np.random.normal(0, 0.05, num_rows)
-    
-    # Inject anomalies (spikes and pattern changes)
-    anomaly_indices = [100, 150, 200, 250, 300, 350]
+
+    # Apply global shifts and scaling to guarantee separation
+    feature1 = feature1 * 2.5 + 3.0
+    feature2 = feature2 * -2.0 + 1.5
+    feature3 = feature3 * 3.0 + 2.0
+
+    # Inject strong anomalies (many and large)
+    anomaly_indices = [80, 120, 160, 200, 240, 280, 320, 360, 420]
     for idx in anomaly_indices:
         if idx < num_rows:
-            feature1[idx:idx+10] += np.random.uniform(2, 4)
-            feature2[idx:idx+10] *= np.random.uniform(1.5, 2.5)
-            feature3[idx:idx+10] += np.random.uniform(-1, -0.5)
+            feature1[idx:idx+20] += np.random.uniform(4, 7)
+            feature2[idx:idx+20] *= np.random.uniform(2.5, 4.0)
+            feature3[idx:idx+20] += np.random.uniform(-4, -2)
     
     data = np.column_stack([feature1, feature2, feature3])
     df = pd.DataFrame(data, columns=['feature1', 'feature2', 'feature3'])
     
-    # Convert to CSV in memory
     stream = io.StringIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
@@ -233,3 +279,67 @@ async def generate_sample_trojan():
 
 
 # For local testing: uvicorn src.server:app --reload --port 8000
+
+@app.get("/generate-sample-clean")
+async def generate_sample_clean():
+    """Generate a clean sample CSV (should test as NORMAL)"""
+    np.random.seed(999)
+    num_rows = 500
+    
+    # Generate very similar data to normal - should pass detection
+    time = np.linspace(0, 10, num_rows)
+    feature1 = np.sin(time) + np.random.normal(0, 0.12, num_rows)
+    feature2 = np.cos(time * 1.5) + np.random.normal(0, 0.11, num_rows)
+    feature3 = np.sin(time * 0.5) * 0.5 + np.random.normal(0, 0.06, num_rows)
+    
+    data = np.column_stack([feature1, feature2, feature3])
+    df = pd.DataFrame(data, columns=['feature1', 'feature2', 'feature3'])
+    
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        io.BytesIO(stream.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=clean_sample.csv"}
+    )
+
+
+@app.get("/generate-sample-suspicious")
+async def generate_sample_suspicious():
+    """Generate a suspicious sample CSV (borderline detection - might be flagged)"""
+    np.random.seed(456)
+    num_rows = 500
+    
+    # Generate data with moderate drift + mild anomalies
+    time = np.linspace(0, 10, num_rows)
+    feature1 = np.sin(time) + np.random.normal(0, 0.18, num_rows)
+    feature2 = np.cos(time * 1.5) + np.random.normal(0, 0.18, num_rows)
+    feature3 = np.sin(time * 0.5) * 0.5 + np.random.normal(0, 0.10, num_rows)
+
+    # Apply a small global shift (borderline)
+    feature1 = feature1 + 0.6
+    feature2 = feature2 - 0.5
+    feature3 = feature3 + 0.4
+    
+    # Inject mild anomalies (fewer, moderate size)
+    anomaly_indices = [120, 200, 280, 360]
+    for idx in anomaly_indices:
+        if idx < num_rows:
+            feature1[idx:idx+8] += np.random.uniform(1.0, 1.8)
+            feature2[idx:idx+8] *= np.random.uniform(1.3, 1.6)
+            feature3[idx:idx+8] += np.random.uniform(-1.0, -0.6)
+    
+    data = np.column_stack([feature1, feature2, feature3])
+    df = pd.DataFrame(data, columns=['feature1', 'feature2', 'feature3'])
+    
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        io.BytesIO(stream.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=suspicious_sample.csv"}
+    )

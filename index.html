@@ -424,20 +424,43 @@
 
       <div class="panel" style="margin-bottom: 20px">
         <p style="color: #555; font-size: 14px; margin-bottom: 12px">
-          <strong>Need test data?</strong> Generate sample CSV files to try the
-          detector:
+          <strong>Need test data?</strong> Download reference normal data and
+          try different sample types:
         </p>
-        <div class="button-group" style="margin-top: 0">
+        <div class="button-group" style="margin-top: 0; margin-bottom: 8px">
           <button
             type="button"
             class="btn-submit"
             id="genNormal"
             style="
-              flex: 1;
               background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%);
             "
           >
-            📥 Download Normal CSV
+            📥 Normal Reference
+          </button>
+        </div>
+        <div class="button-group" style="margin-top: 0">
+          <button
+            type="button"
+            class="btn-submit"
+            id="genClean"
+            style="
+              flex: 1;
+              background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            "
+          >
+            ✅ Clean Sample
+          </button>
+          <button
+            type="button"
+            class="btn-submit"
+            id="genSuspicious"
+            style="
+              flex: 1;
+              background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+            "
+          >
+            ⚠️ Suspicious Sample
           </button>
           <button
             type="button"
@@ -448,7 +471,7 @@
               background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
             "
           >
-            📥 Download Trojan CSV
+            🦠 Trojan Sample
           </button>
         </div>
       </div>
@@ -582,14 +605,30 @@
           Generate plots to visualize training progress and detection
           performance.
         </p>
-        <button
-          type="button"
-          class="btn-submit"
-          id="generatePlots"
-          style="width: 100%"
-        >
-          Generate Plots
-        </button>
+        <div class="button-group" style="margin-top: 0">
+          <button
+            type="button"
+            class="btn-submit"
+            id="generatePlots"
+            style="
+              flex: 1;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            "
+          >
+            Generate Plots (Project Data)
+          </button>
+          <button
+            type="button"
+            class="btn-submit"
+            id="generatePlotsUploaded"
+            style="
+              flex: 1;
+              background: linear-gradient(135deg, #26a69a 0%, #4db6ac 100%);
+            "
+          >
+            Generate Plots (Uploaded Data)
+          </button>
+        </div>
         <div class="loading" id="plotLoading" style="padding: 12px 0">
           <div class="spinner"></div>
           <p>Generating plots...</p>
@@ -615,6 +654,7 @@
       const API_URL = "http://127.0.0.1:8000/score";
       const TRAIN_URL = "http://127.0.0.1:8000/train";
       const VISUALIZE_URL = "http://127.0.0.1:8000/visualize";
+      const VISUALIZE_UPLOADED_URL = "http://127.0.0.1:8000/visualize-uploaded";
 
       const trainBtn = document.getElementById("trainBtn");
       const demoTrain = document.getElementById("demoTrain");
@@ -633,6 +673,9 @@
       let lossChart = null;
 
       const generatePlotsBtn = document.getElementById("generatePlots");
+      const generatePlotsUploadedBtn = document.getElementById(
+        "generatePlotsUploaded"
+      );
       const plotLoading = document.getElementById("plotLoading");
       const plotError = document.getElementById("plotError");
       const plotsContainer = document.getElementById("plotsContainer");
@@ -642,46 +685,59 @@
       const closeModal = document.getElementById("closeModal");
 
       const genNormalBtn = document.getElementById("genNormal");
+      const genCleanBtn = document.getElementById("genClean");
+      const genSuspiciousBtn = document.getElementById("genSuspicious");
       const genTrojanBtn = document.getElementById("genTrojan");
 
       // Generate and download sample CSV files
-      genNormalBtn.addEventListener("click", async () => {
+      async function downloadSample(endpoint, filename, errorMsg) {
         try {
-          const response = await fetch(
-            "http://127.0.0.1:8000/generate-sample-normal"
-          );
+          const response = await fetch(`http://127.0.0.1:8000/${endpoint}`);
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = "normal_sample.csv";
+          a.download = filename;
           document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
           document.body.removeChild(a);
         } catch (err) {
-          showError("Failed to generate normal CSV: " + err.message);
+          showError(errorMsg + err.message);
         }
-      });
+      }
 
-      genTrojanBtn.addEventListener("click", async () => {
-        try {
-          const response = await fetch(
-            "http://127.0.0.1:8000/generate-sample-trojan"
-          );
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "trojan_sample.csv";
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        } catch (err) {
-          showError("Failed to generate trojan CSV: " + err.message);
-        }
-      });
+      genNormalBtn.addEventListener("click", () =>
+        downloadSample(
+          "generate-sample-normal",
+          "normal_sample.csv",
+          "Failed to generate normal CSV: "
+        )
+      );
+
+      genCleanBtn.addEventListener("click", () =>
+        downloadSample(
+          "generate-sample-clean",
+          "clean_sample.csv",
+          "Failed to generate clean CSV: "
+        )
+      );
+
+      genSuspiciousBtn.addEventListener("click", () =>
+        downloadSample(
+          "generate-sample-suspicious",
+          "suspicious_sample.csv",
+          "Failed to generate suspicious CSV: "
+        )
+      );
+
+      genTrojanBtn.addEventListener("click", () =>
+        downloadSample(
+          "generate-sample-trojan",
+          "trojan_sample.csv",
+          "Failed to generate trojan CSV: "
+        )
+      );
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -927,6 +983,7 @@
       // Visualization handlers
       generatePlotsBtn.addEventListener("click", async () => {
         generatePlotsBtn.disabled = true;
+        generatePlotsUploadedBtn.disabled = true;
         plotLoading.classList.add("show");
         plotError.classList.remove("show");
         plotsContainer.style.display = "none";
@@ -949,6 +1006,36 @@
         } finally {
           plotLoading.classList.remove("show");
           generatePlotsBtn.disabled = false;
+          generatePlotsUploadedBtn.disabled = false;
+        }
+      });
+
+      generatePlotsUploadedBtn.addEventListener("click", async () => {
+        generatePlotsBtn.disabled = true;
+        generatePlotsUploadedBtn.disabled = true;
+        plotLoading.classList.add("show");
+        plotError.classList.remove("show");
+        plotsContainer.style.display = "none";
+
+        try {
+          const response = await fetch(VISUALIZE_UPLOADED_URL, {
+            method: "POST",
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          displayPlots(data.plots);
+        } catch (err) {
+          plotError.textContent = `Error: ${err.message}`;
+          plotError.classList.add("show");
+        } finally {
+          plotLoading.classList.remove("show");
+          generatePlotsBtn.disabled = false;
+          generatePlotsUploadedBtn.disabled = false;
         }
       });
 
@@ -960,6 +1047,10 @@
           "confusion_matrix.png": "Confusion Matrix",
           "roc_curve.png": "ROC Curve",
           "training_loss.png": "Training Loss",
+          "uploaded_data_comparison.png": "Uploaded Data Comparison",
+          "uploaded_score_distribution.png": "Uploaded Score Distribution",
+          "uploaded_confusion_matrix.png": "Uploaded Confusion Matrix",
+          "uploaded_roc_curve.png": "Uploaded ROC Curve",
         };
 
         plots.forEach((plot) => {
