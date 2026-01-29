@@ -21,6 +21,13 @@ def run_pipeline(
     p1, p2, y = make_pairs(data["normal"], data["trojan"])
 
     history = train(p1, p2, y, epochs=epochs or EPOCHS)
+    
+    # Save training history for visualization
+    import json
+    history_path = "data/processed/training_history.json"
+    with open(history_path, "w") as f:
+        json.dump({"losses": history, "epochs": len(history)}, f)
+    
     return {
         "epochs": len(history),
         "losses": history,

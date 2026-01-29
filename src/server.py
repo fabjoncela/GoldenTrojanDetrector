@@ -13,6 +13,7 @@ from typing import Optional
 from .config import THRESHOLD, WINDOW_SIZE
 from .evaluate import _load_model, _load_scaler, _prepare_windows, anomaly_scores
 from .pipeline import run_pipeline
+from .visualize import generate_all_plots
 
 app = FastAPI(title="Trojan Detector API", version="0.1.0")
 
@@ -117,6 +118,25 @@ def read_root():
     if index_path.exists():
         return FileResponse(index_path)
     return {"message": "Open index.html to use the detector"}
+
+
+@app.post("/visualize")
+def create_visualizations():
+    """Generate all visualization plots"""
+    try:
+        result = generate_all_plots()
+        return {"status": "success", "message": "Plots generated successfully", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate plots: {str(e)}")
+
+
+@app.get("/plots/{plot_name}")
+def get_plot(plot_name: str):
+    """Serve a specific plot image"""
+    plot_path = Path("plots") / plot_name
+    if not plot_path.exists():
+        raise HTTPException(status_code=404, detail=f"Plot {plot_name} not found")
+    return FileResponse(plot_path, media_type="image/png")
 
 
 @app.post("/train")

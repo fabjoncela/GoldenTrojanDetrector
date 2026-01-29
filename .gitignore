@@ -39,6 +39,12 @@ data/raw/
 *.pkl
 *.pickle
 
+# Generated plots (regenerable from code)
+plots/
+
+# Training history (regenerable)
+training_history.json
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb

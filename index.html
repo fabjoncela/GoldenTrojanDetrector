@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trojan Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
       * {
         margin: 0;
@@ -282,12 +283,144 @@
         color: #555;
         line-height: 1.4;
       }
+
+      .train-chart-container {
+        margin-top: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        display: none;
+        height: 300px;
+      }
+
+      .train-chart-container.show {
+        display: block;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 15px;
+      }
+
+      .stat-card {
+        padding: 12px;
+        background: #f8f9ff;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #e4e7ff;
+      }
+
+      .stat-label {
+        font-size: 11px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+
+      .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #667eea;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.3s ease;
+      }
+
+      .plots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .plot-card {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+
+      .plot-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .plot-card img {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: pointer;
+      }
+
+      .plot-title {
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        text-align: center;
+        background: #f8f9ff;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .modal-content {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+      }
+
+      .close-modal {
+        position: absolute;
+        top: 20px;
+        right: 40px;
+        color: white;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .close-modal:hover {
+        color: #ccc;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>🛡️ Trojan Detector</h1>
-      <p class="subtitle">Upload CSV files to detect anomalies</p>
+      <h1>🛡️ Golden-Free Runtime Hardware Trojan & Anomaly Detection</h1>
+      <p class="subtitle">
+        Upload CSV files to detect anomalies using Contrastive Learning
+      </p>
 
       <form id="scoreForm">
         <div class="form-group">
@@ -385,8 +518,61 @@
         </div>
         <div class="error" id="trainError" style="margin-top: 10px"></div>
         <div class="train-status" id="trainStatus"></div>
+        <div class="progress-bar" id="trainProgress" style="display: none">
+          <div class="progress-fill" id="trainProgressFill"></div>
+        </div>
         <div class="train-loss" id="trainLoss"></div>
+        <div class="train-chart-container" id="trainChartContainer">
+          <canvas id="lossChart" style="max-height: 280px"></canvas>
+        </div>
+        <div class="stats-grid" id="trainStats" style="display: none">
+          <div class="stat-card">
+            <div class="stat-label">Epochs</div>
+            <div class="stat-value" id="statEpochs">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Time</div>
+            <div class="stat-value" id="statTime">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Initial Loss</div>
+            <div class="stat-value" id="statInitialLoss">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Final Loss</div>
+            <div class="stat-value" id="statFinalLoss">-</div>
+          </div>
+        </div>
       </div>
+
+      <h2 class="section-title">Visualizations</h2>
+      <div class="panel">
+        <p style="color: #555; font-size: 14px; margin-bottom: 12px">
+          Generate plots to visualize training progress and detection
+          performance.
+        </p>
+        <button
+          type="button"
+          class="btn-submit"
+          id="generatePlots"
+          style="width: 100%"
+        >
+          Generate Plots
+        </button>
+        <div class="loading" id="plotLoading" style="padding: 12px 0">
+          <div class="spinner"></div>
+          <p>Generating plots...</p>
+        </div>
+        <div class="error" id="plotError" style="margin-top: 10px"></div>
+        <div id="plotsContainer" style="display: none">
+          <div class="plots-grid" id="plotsGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="plotModal">
+      <span class="close-modal" id="closeModal">&times;</span>
+      <img class="modal-content" id="modalImage" />
     </div>
 
     <script>
@@ -397,6 +583,7 @@
       const results = document.getElementById("results");
       const API_URL = "http://127.0.0.1:8000/score";
       const TRAIN_URL = "http://127.0.0.1:8000/train";
+      const VISUALIZE_URL = "http://127.0.0.1:8000/visualize";
 
       const trainBtn = document.getElementById("trainBtn");
       const demoTrain = document.getElementById("demoTrain");
@@ -406,6 +593,22 @@
       const trainError = document.getElementById("trainError");
       const trainStatus = document.getElementById("trainStatus");
       const trainLoss = document.getElementById("trainLoss");
+      const trainProgress = document.getElementById("trainProgress");
+      const trainProgressFill = document.getElementById("trainProgressFill");
+      const trainChartContainer = document.getElementById(
+        "trainChartContainer"
+      );
+      const trainStats = document.getElementById("trainStats");
+      let lossChart = null;
+
+      const generatePlotsBtn = document.getElementById("generatePlots");
+      const plotLoading = document.getElementById("plotLoading");
+      const plotError = document.getElementById("plotError");
+      const plotsContainer = document.getElementById("plotsContainer");
+      const plotsGrid = document.getElementById("plotsGrid");
+      const plotModal = document.getElementById("plotModal");
+      const modalImage = document.getElementById("modalImage");
+      const closeModal = document.getElementById("closeModal");
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -505,8 +708,29 @@
         trainError.classList.remove("show");
         trainStatus.textContent = "";
         trainLoss.textContent = "";
+        trainProgress.style.display = "none";
+        trainChartContainer.style.display = "none";
+        trainStats.style.display = "none";
 
         try {
+          // Show progress bar
+          trainProgress.style.display = "block";
+          trainProgressFill.style.width = "0%";
+
+          const totalEpochs = epochsOverride || 50;
+          const startTime = Date.now();
+
+          // Simulate progress during training
+          const progressInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const estimatedTotal = epochsOverride ? 10000 : 100000;
+            const estimatedProgress = Math.min(
+              (elapsed / estimatedTotal) * 100,
+              95
+            );
+            trainProgressFill.style.width = estimatedProgress + "%";
+          }, 500);
+
           const formData = new FormData();
           if (epochsOverride) {
             formData.append("epochs", epochsOverride);
@@ -517,23 +741,36 @@
             body: formData,
           });
 
+          clearInterval(progressInterval);
+          trainProgressFill.style.width = "100%";
+
           if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.detail || `HTTP ${response.status}`);
           }
 
           const data = await response.json();
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
           const lastLoss = data.losses?.length
             ? data.losses[data.losses.length - 1]
             : null;
           const epochsUsed = data.epochs_used ?? data.epochs;
-          trainStatus.textContent = `Training complete: ${epochsUsed} epochs`;
+
+          trainStatus.textContent = `Training complete: ${epochsUsed} epochs in ${elapsed}s`;
           if (lastLoss !== null) {
-            trainLoss.textContent = `Final loss: ${lastLoss.toFixed(
-              4
-            )} | Loss history: ${data.losses
-              .map((v) => v.toFixed(4))
-              .join(", ")}`;
+            trainLoss.textContent = `Final loss: ${lastLoss.toFixed(4)}`;
+
+            // Show stats
+            trainStats.style.display = "grid";
+            document.getElementById("statEpochs").textContent = epochsUsed;
+            document.getElementById("statTime").textContent = elapsed + "s";
+            document.getElementById("statFinalLoss").textContent =
+              lastLoss.toFixed(4);
+            document.getElementById("statInitialLoss").textContent =
+              data.losses[0].toFixed(4);
+
+            // Show loss chart
+            showLossChart(data.losses);
           }
         } catch (err) {
           trainError.textContent = `Error: ${err.message}`;
@@ -545,6 +782,66 @@
         }
       }
 
+      function showLossChart(lossHistory) {
+        trainChartContainer.style.display = "block";
+
+        const ctx = document.getElementById("lossChart").getContext("2d");
+
+        // Destroy previous chart if exists
+        if (lossChart) {
+          lossChart.destroy();
+        }
+
+        lossChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: lossHistory.map((_, i) => i + 1),
+            datasets: [
+              {
+                label: "Training Loss",
+                data: lossHistory,
+                borderColor: "#4CAF50",
+                backgroundColor: "rgba(76, 175, 80, 0.1)",
+                tension: 0.4,
+                fill: true,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: "top",
+              },
+              title: {
+                display: true,
+                text: "Training Loss Over Epochs",
+                font: { size: 16, weight: "bold" },
+              },
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: "Epoch",
+                },
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: "Loss",
+                },
+                beginAtZero: false,
+              },
+            },
+          },
+        });
+      }
+
       trainBtn.addEventListener("click", () => runTraining(null));
       demoTrain.addEventListener("click", () => runTraining(5));
 
@@ -553,6 +850,80 @@
         trainStatus.textContent = "";
         trainLoss.textContent = "";
       });
+
+      // Visualization handlers
+      generatePlotsBtn.addEventListener("click", async () => {
+        generatePlotsBtn.disabled = true;
+        plotLoading.classList.add("show");
+        plotError.classList.remove("show");
+        plotsContainer.style.display = "none";
+
+        try {
+          const response = await fetch(VISUALIZE_URL, {
+            method: "POST",
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          displayPlots(data.plots);
+        } catch (err) {
+          plotError.textContent = `Error: ${err.message}`;
+          plotError.classList.add("show");
+        } finally {
+          plotLoading.classList.remove("show");
+          generatePlotsBtn.disabled = false;
+        }
+      });
+
+      function displayPlots(plots) {
+        plotsGrid.innerHTML = "";
+        const plotTitles = {
+          "data_comparison.png": "Data Comparison",
+          "score_distribution.png": "Score Distribution",
+          "confusion_matrix.png": "Confusion Matrix",
+          "roc_curve.png": "ROC Curve",
+          "training_loss.png": "Training Loss",
+        };
+
+        plots.forEach((plot) => {
+          const card = document.createElement("div");
+          card.className = "plot-card";
+
+          const img = document.createElement("img");
+          img.src = `http://127.0.0.1:8000/plots/${plot}`;
+          img.alt = plotTitles[plot] || plot;
+          img.onclick = () => openModal(img.src);
+
+          const title = document.createElement("div");
+          title.className = "plot-title";
+          title.textContent = plotTitles[plot] || plot;
+
+          card.appendChild(img);
+          card.appendChild(title);
+          plotsGrid.appendChild(card);
+        });
+
+        plotsContainer.style.display = "block";
+      }
+
+      function openModal(src) {
+        modalImage.src = src;
+        plotModal.classList.add("show");
+      }
+
+      closeModal.onclick = () => {
+        plotModal.classList.remove("show");
+      };
+
+      plotModal.onclick = (e) => {
+        if (e.target === plotModal) {
+          plotModal.classList.remove("show");
+        }
+      };
     </script>
   </body>
 </html>
