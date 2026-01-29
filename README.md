@@ -76,10 +76,49 @@ http://127.0.0.1:8000/
 
 ### Web Interface
 
-1. **Score Analysis**: Upload normal reference data and sample data to detect anomalies
-2. **Use Project Data**: Quick test with pre-loaded sample data
-3. **Train Model**: Run full training (50 epochs) or demo mode (5 epochs)
-4. **Generate Plots**: Visualize training performance and detection results
+1. **Generate Sample Data**: Download pre-formatted test CSV files (normal and trojan)
+2. **Score Analysis**: Upload normal reference data and sample data to detect anomalies
+3. **Use Project Data**: Quick test with pre-loaded sample data
+4. **Train Model**: Run full training (50 epochs) or demo mode (5 epochs)
+5. **Generate Plots**: Visualize training performance and detection results
+
+### Quick Start: Generate Test Data
+
+**Don't have CSV files? No problem!**
+
+1. Click **"📥 Download Normal CSV"** to get a sample normal reference file
+2. Click **"📥 Download Trojan CSV"** to get a sample trojan/anomaly file
+3. Upload both files in the "Analyze" section to see the detector in action
+
+This is perfect for demonstrations without needing to understand CSV formats!
+
+### Using Custom CSV Data
+
+**For web upload:**
+
+- Click "Analyze" section in the web interface
+- Upload two CSV files:
+  - **Normal Reference Data**: Baseline data from normal operation
+  - **Sample to Analyze**: Data you want to check for anomalies
+
+**Sample data location (for testing):**
+
+- Normal data: `data/raw/normal/run_001.csv`
+- Trojan data: `data/raw/trojan/triggered/run_001.csv`
+
+**CSV Format Requirements:**
+
+- Must contain numeric columns (features)
+- Time series data with consistent sampling rate
+- No headers required (or will be auto-detected)
+- Example: 3 columns of sensor readings, power measurements, or performance counters
+
+**To use your own data:**
+
+1. Prepare CSV files with your hardware runtime measurements
+2. One file should be from normal/trusted execution (reference)
+3. Another file should be the sample you want to test for trojans
+4. Upload both files via the web interface "Analyze" section
 
 ### Command Line
 
@@ -117,9 +156,10 @@ python -m src.evaluate data/raw/normal/run_001.csv data/raw/trojan/triggered/run
 - NumPy, Pandas
 - Scikit-learn
 - Matplotlib, Seaborn
+  Etc etc
 
 See `requirements.txt` for complete list.
 
-## Author
+## Info
 
 Created for hardware trojan detection research.

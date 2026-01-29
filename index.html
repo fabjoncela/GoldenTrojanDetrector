@@ -422,6 +422,37 @@
         Upload CSV files to detect anomalies using Contrastive Learning
       </p>
 
+      <div class="panel" style="margin-bottom: 20px">
+        <p style="color: #555; font-size: 14px; margin-bottom: 12px">
+          <strong>Need test data?</strong> Generate sample CSV files to try the
+          detector:
+        </p>
+        <div class="button-group" style="margin-top: 0">
+          <button
+            type="button"
+            class="btn-submit"
+            id="genNormal"
+            style="
+              flex: 1;
+              background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%);
+            "
+          >
+            📥 Download Normal CSV
+          </button>
+          <button
+            type="button"
+            class="btn-submit"
+            id="genTrojan"
+            style="
+              flex: 1;
+              background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
+            "
+          >
+            📥 Download Trojan CSV
+          </button>
+        </div>
+      </div>
+
       <form id="scoreForm">
         <div class="form-group">
           <label for="normalFile">Normal Reference Data (CSV)</label>
@@ -609,6 +640,48 @@
       const plotModal = document.getElementById("plotModal");
       const modalImage = document.getElementById("modalImage");
       const closeModal = document.getElementById("closeModal");
+
+      const genNormalBtn = document.getElementById("genNormal");
+      const genTrojanBtn = document.getElementById("genTrojan");
+
+      // Generate and download sample CSV files
+      genNormalBtn.addEventListener("click", async () => {
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:8000/generate-sample-normal"
+          );
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "normal_sample.csv";
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (err) {
+          showError("Failed to generate normal CSV: " + err.message);
+        }
+      });
+
+      genTrojanBtn.addEventListener("click", async () => {
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:8000/generate-sample-trojan"
+          );
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "trojan_sample.csv";
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (err) {
+          showError("Failed to generate trojan CSV: " + err.message);
+        }
+      });
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();

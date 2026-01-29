@@ -1,13 +1,15 @@
 import json
 import tempfile
+import io
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from typing import Optional
 
 from .config import THRESHOLD, WINDOW_SIZE
@@ -165,6 +167,69 @@ def train_pipeline(
     ARTIFACTS.scaler_path = None
 
     return result
+
+
+@app.get("/generate-sample-normal")
+async def generate_sample_normal():
+    """Generate a sample normal/reference CSV file for testing"""
+    np.random.seed(42)
+    num_rows = 500
+    num_features = 3
+    
+    # Generate normal data with consistent patterns
+    time = np.linspace(0, 10, num_rows)
+    feature1 = np.sin(time) + np.random.normal(0, 0.1, num_rows)
+    feature2 = np.cos(time * 1.5) + np.random.normal(0, 0.1, num_rows)
+    feature3 = np.sin(time * 0.5) * 0.5 + np.random.normal(0, 0.05, num_rows)
+    
+    data = np.column_stack([feature1, feature2, feature3])
+    df = pd.DataFrame(data, columns=['feature1', 'feature2', 'feature3'])
+    
+    # Convert to CSV in memory
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        io.BytesIO(stream.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=normal_sample.csv"}
+    )
+
+
+@app.get("/generate-sample-trojan")
+async def generate_sample_trojan():
+    """Generate a sample trojan/anomaly CSV file for testing"""
+    np.random.seed(123)
+    num_rows = 500
+    
+    # Generate trojan data with anomalies
+    time = np.linspace(0, 10, num_rows)
+    feature1 = np.sin(time) + np.random.normal(0, 0.1, num_rows)
+    feature2 = np.cos(time * 1.5) + np.random.normal(0, 0.1, num_rows)
+    feature3 = np.sin(time * 0.5) * 0.5 + np.random.normal(0, 0.05, num_rows)
+    
+    # Inject anomalies (spikes and pattern changes)
+    anomaly_indices = [100, 150, 200, 250, 300, 350]
+    for idx in anomaly_indices:
+        if idx < num_rows:
+            feature1[idx:idx+10] += np.random.uniform(2, 4)
+            feature2[idx:idx+10] *= np.random.uniform(1.5, 2.5)
+            feature3[idx:idx+10] += np.random.uniform(-1, -0.5)
+    
+    data = np.column_stack([feature1, feature2, feature3])
+    df = pd.DataFrame(data, columns=['feature1', 'feature2', 'feature3'])
+    
+    # Convert to CSV in memory
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        io.BytesIO(stream.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=trojan_sample.csv"}
+    )
 
 
 # For local testing: uvicorn src.server:app --reload --port 8000
